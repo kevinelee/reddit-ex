@@ -664,11 +664,12 @@ body.rr-pushed {
   cursor: pointer;
 }
 
-/* H hide button — top-right of the post item, revealed on hover */
+/* H hide button — left of .top-matter, inline with expando, revealed on hover */
 .rr-hide-btn {
   position: absolute;
-  right: 6px;
-  top: 6px;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
   cursor: pointer;
   font-size: 10px;
   font-family: inherit;
