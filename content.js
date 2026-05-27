@@ -1044,20 +1044,34 @@
     const id = fullname.replace('t3_', '');
     if (!id) return;
 
-    const modhash = document.querySelector('input[name=uh]')?.value || '';
-    try {
-      await fetch('https://old.reddit.com/api/hide', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `id=${encodeURIComponent(fullname)}&uh=${encodeURIComponent(modhash)}`,
-      });
-    } catch (err) {
-      console.error('[rr] hide failed', err);
-    }
+    // Snapshot all copies immediately so the loop is stable
+    const allCopies = [...document.querySelectorAll(`.thing[data-fullname="${fullname}"]`)];
 
-    // Remove all copies of this post from the listing
-    document.querySelectorAll(`.thing[data-fullname="${fullname}"]`).forEach(el => el.remove());
+    // Animate out: fade + height collapse (runs in parallel with the fetch)
+    allCopies.forEach(el => {
+      el.style.transition = 'opacity 0.25s ease, transform 0.25s ease, max-height 0.35s ease, margin-top 0.35s ease, margin-bottom 0.35s ease';
+      el.style.overflow   = 'hidden';
+      el.style.maxHeight  = el.offsetHeight + 'px';
+      void el.offsetHeight; // force reflow so transition picks up the start value
+      el.style.opacity    = '0';
+      el.style.transform  = 'translateX(-6px)';
+      el.style.maxHeight  = '0';
+      el.style.marginTop  = '0';
+      el.style.marginBottom = '0';
+    });
+
+    // Fire the API call without blocking the animation
+    const modhash = document.querySelector('input[name=uh]')?.value || '';
+    fetch('https://old.reddit.com/api/hide', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `id=${encodeURIComponent(fullname)}&uh=${encodeURIComponent(modhash)}`,
+    }).catch(err => console.error('[rr] hide failed', err));
+
+    // Wait for animation to finish, then clean up the DOM
+    await new Promise(r => setTimeout(r, 380));
+    allCopies.forEach(el => el.remove());
 
     // Clear hover/selection state if they pointed at this post
     if (hoveredThingEl?.dataset.fullname === fullname) hoveredThingEl = null;
