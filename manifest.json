@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Reddit Reader",
+  "version": "1.0",
+  "description": "Read Reddit posts in a side panel with history and read/unread tracking.",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["*://old.reddit.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://v.redd.it/*"],
+      "js": ["video-frame.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

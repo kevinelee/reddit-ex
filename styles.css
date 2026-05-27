@@ -1,0 +1,686 @@
+/* ── Panel ─────────────────────────────────────────────────────────────── */
+
+#rr-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 520px;
+  height: 100vh;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  background: #f6f7f8;
+  border-left: 1px solid #d0d0d0;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.18);
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+}
+
+#rr-panel.rr-open {
+  transform: translateX(0);
+}
+
+/* ── Resize handle ─────────────────────────────────────────────────────── */
+
+#rr-resize {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 1;
+  transition: background 0.12s;
+}
+
+#rr-resize:hover,
+#rr-resize.rr-resizing {
+  background: rgba(0, 121, 211, 0.25);
+}
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+
+#rr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #fff;
+  border-bottom: 1px solid #d0d0d0;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#rr-header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.rr-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  background: #e8e8e8;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #333;
+  white-space: nowrap;
+  line-height: 1.4;
+  transition: background 0.12s;
+}
+
+.rr-btn:hover {
+  background: #d8d8d8;
+}
+
+#rr-newtab {
+  background: #0079d3;
+  border-color: #006bbf;
+  color: #fff;
+}
+
+#rr-newtab:hover {
+  background: #006bbf;
+}
+
+#rr-hide {
+  background: #fff0f0;
+  border-color: #e8c0c0;
+  color: #c00;
+}
+
+#rr-hide:hover {
+  background: #fde8e8;
+  border-color: #cc0000;
+}
+
+#rr-read-count {
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+  margin-right: auto;
+  padding-left: 4px;
+}
+
+#rr-close {
+  background: #e0e0e0;
+}
+
+/* ── Body ──────────────────────────────────────────────────────────────── */
+
+#rr-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Loader ────────────────────────────────────────────────────────────── */
+
+#rr-loader {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6f7f8;
+}
+
+.rr-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #d0d0d0;
+  border-top-color: #0079d3;
+  border-radius: 50%;
+  animation: rr-spin 0.7s linear infinite;
+}
+
+@keyframes rr-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Drag overlay (blocks iframe pointer events during resize) ─────────── */
+
+#rr-drag-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  cursor: ew-resize;
+}
+
+/* ── iframe ────────────────────────────────────────────────────────────── */
+
+#rr-iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #fff;
+}
+
+/* ── History view ──────────────────────────────────────────────────────── */
+
+#rr-history-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.rr-empty {
+  padding: 32px 20px;
+  text-align: center;
+  color: #888;
+  font-size: 13px;
+  line-height: 1.6;
+  font-family: inherit;
+}
+
+/* ── History item ──────────────────────────────────────────────────────── */
+
+.rr-hist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  margin: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: background 0.1s, border-color 0.1s, box-shadow 0.1s;
+  user-select: none;
+}
+
+.rr-hist-item:hover {
+  background: #eaf4ff;
+  border-color: #0079d3;
+  box-shadow: 0 1px 6px rgba(0, 121, 211, 0.15);
+}
+
+.rr-hist-item.rr-selected {
+  background: #ddeeff;
+  border-color: #0079d3;
+  box-shadow: 0 0 0 2px rgba(0, 121, 211, 0.25);
+}
+
+/* Unread dot */
+.rr-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.rr-unread .rr-dot {
+  background: #0079d3;
+}
+
+.rr-read .rr-dot {
+  background: #c8c8c8;
+}
+
+.rr-hist-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.rr-hist-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1c1c1c;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.rr-read .rr-hist-title {
+  color: #888;
+  font-weight: 400;
+}
+
+.rr-hist-meta {
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 3px;
+}
+
+.rr-hist-remove {
+  flex-shrink: 0;
+  align-self: center;
+  opacity: 0;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.1s, background 0.1s, color 0.1s;
+}
+
+.rr-hist-item:hover .rr-hist-remove {
+  opacity: 1;
+}
+
+.rr-hist-remove:hover {
+  background: #fde8e8;
+  color: #cc0000;
+}
+
+/* ── Tab button ────────────────────────────────────────────────────────── */
+
+#rr-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 99998;
+  writing-mode: vertical-rl;
+  padding: 12px 6px;
+  background: #0079d3;
+  color: #fff;
+  border: none;
+  border-radius: 6px 0 0 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  letter-spacing: 0.03em;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+  transition: background 0.12s, right 0.22s ease;
+}
+
+#rr-tab:hover {
+  background: #006bbf;
+}
+
+
+/* ── Listing — hover, read & selected states ───────────────────────────── */
+
+.thing[data-permalink] {
+  border-radius: 4px;
+  transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
+}
+
+.thing[data-permalink]:hover {
+  background: rgba(0, 121, 211, 0.06) !important;
+  transform: scale(1.01);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 1;
+}
+
+.thing.rr-listing-read .title a.title {
+  color: #888 !important;
+}
+
+.thing.rr-thing-selected {
+  background: #ddeeff !important;
+  border-radius: 4px;
+  outline: 2px solid #0079d3;
+  outline-offset: -2px;
+}
+
+/* ── Page push ──────────────────────────────────────────────────────────── */
+
+body.rr-pushed {
+  transition: margin-right 0.22s ease, margin-bottom 0.22s ease;
+}
+
+/* ── Comment collapse (direct post pages) ───────────────────────────────── */
+
+.comment .entry {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
+}
+
+.comment .entry:hover {
+  background: rgba(0, 121, 211, 0.07) !important;
+  transform: scale(1.01);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Pinned media preview highlight ────────────────────────────────────── */
+
+.media-preview .no-constraints-when-pinned {
+  outline: 3px solid #0079d3;
+  border-radius: 4px;
+}
+
+/* ── Video active indicator ─────────────────────────────────────────────── */
+
+@keyframes rr-video-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(0, 121, 211, 0.75), 0 0 14px rgba(0, 121, 211, 0.5); }
+  50%       { box-shadow: 0 0 0 3px rgba(0, 121, 211, 0.2),  0 0 6px  rgba(0, 121, 211, 0.15); }
+}
+
+.reddit-video-player-root.rr-video-active {
+  border: 3px solid rgba(0, 121, 211, 0.85);
+  outline: 3px solid rgba(0, 121, 211, 0.85);
+  border-radius: 4px;
+  animation: rr-video-pulse 1.4s ease-in-out infinite;
+}
+
+/* ── Tab hover popup ────────────────────────────────────────────────────── */
+
+#rr-tab-popup {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 99997;
+  width: 280px;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  box-shadow: -3px 0 20px rgba(0, 0, 0, 0.14);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease;
+  overflow: hidden;
+}
+
+#rr-tab-popup.rr-tab-popup-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#rr-tab-popup-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.rr-tab-popup-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.rr-tab-popup-item:hover {
+  background: #eaf4ff;
+}
+
+.rr-tab-popup-item .rr-dot {
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.rr-tab-popup-title {
+  font-size: 12px;
+  color: #1c1c1c;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.rr-tab-popup-item.rr-read .rr-tab-popup-title {
+  color: #999;
+}
+
+.rr-tab-popup-empty {
+  padding: 16px 12px;
+  text-align: center;
+  color: #aaa;
+  font-size: 12px;
+  font-family: inherit;
+  margin: 0;
+}
+
+#rr-tab-popup-footer {
+  padding: 8px 10px;
+  border-top: 1px solid #ececec;
+  background: #f6f7f8;
+  display: flex;
+  justify-content: center;
+}
+
+#rr-tab-popup-open {
+  width: 100%;
+}
+
+/* ── Context menu ───────────────────────────────────────────────────────── */
+
+#rr-context-menu {
+  position: fixed;
+  z-index: 999999;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.08);
+  padding: 4px 0;
+  min-width: 220px;
+  font-family: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.96);
+  transform-origin: top left;
+  transition: opacity 0.1s ease, transform 0.1s ease;
+}
+
+#rr-context-menu.rr-ctx-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.rr-ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  gap: 24px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.rr-ctx-item:hover {
+  background: #eaf4ff;
+}
+
+.rr-ctx-label {
+  font-size: 13px;
+  color: #1c1c1c;
+}
+
+.rr-ctx-danger:hover {
+  background: #fff0f0;
+}
+
+.rr-ctx-danger .rr-ctx-label {
+  color: #c00;
+}
+
+.rr-ctx-key {
+  font-size: 11px;
+  font-family: inherit;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 1px 6px;
+  color: #666;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.7;
+  flex-shrink: 0;
+}
+
+.rr-ctx-sep {
+  height: 1px;
+  background: #ececec;
+  margin: 4px 0;
+}
+
+/* ── Utility ────────────────────────────────────────────────────────────── */
+
+.rr-hidden {
+  display: none !important;
+}
+
+/* ── Bottom panel mode ──────────────────────────────────────────────────── */
+
+#rr-panel.rr-bottom {
+  top: auto;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 380px; /* fallback; overridden by inline style from applyHeight() */
+  border-left: none;
+  border-top: 1px solid #d0d0d0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
+  transform: translateY(100%);
+}
+
+#rr-panel.rr-bottom.rr-open {
+  transform: translateY(0);
+}
+
+#rr-panel.rr-bottom #rr-resize {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: auto;
+  width: 100%;
+  height: 5px;
+  cursor: ns-resize;
+}
+
+#rr-panel.rr-bottom #rr-drag-overlay {
+  cursor: ns-resize;
+}
+
+/* ── Tab button — bottom mode ───────────────────────────────────────────── */
+
+#rr-tab.rr-bottom {
+  top: auto;
+  right: auto;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  writing-mode: horizontal-tb;
+  text-orientation: initial;
+  letter-spacing: 0;
+  padding: 6px 16px;
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+  transition: background 0.12s;
+}
+
+/* ── Settings section ───────────────────────────────────────────────────── */
+
+#rr-settings {
+  background: #f0f2f5;
+  border-bottom: 1px solid #d0d0d0;
+  flex-shrink: 0;
+}
+
+#rr-settings-inner {
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rr-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rr-setting-label {
+  font-size: 12px;
+  color: #555;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.rr-seg-control {
+  display: flex;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rr-seg-btn {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  background: #e8e8e8;
+  border: none;
+  border-right: 1px solid #c8c8c8;
+  cursor: pointer;
+  color: #555;
+  line-height: 1.5;
+  transition: background 0.12s, color 0.12s;
+}
+
+.rr-seg-btn:last-child {
+  border-right: none;
+}
+
+.rr-seg-btn.rr-seg-active {
+  background: #0079d3;
+  color: #fff;
+}
+
+.rr-seg-btn:hover:not(.rr-seg-active) {
+  background: #d8d8d8;
+}
+
+#rr-settings-toggle {
+  font-size: 13px;
+  padding: 4px 7px;
+}
+
+/* ── Top-matter extra expando button ────────────────────────────────────── */
+
+/* Give .top-matter relative positioning so we can anchor the button */
+.thing[data-permalink] .top-matter {
+  position: relative;
+}
+
+/* Position the injected expando button at the far right, vertically centred */
+.rr-extra-expando {
+  position: absolute !important;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+/* Hide button on the far left of .top-matter */
+.rr-hide-btn {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  color: #bbb;
+  padding: 2px 3px;
+  border-radius: 3px;
+  transition: color 0.12s, background 0.12s;
+  user-select: none;
+}
+
+.rr-hide-btn:hover {
+  color: #cc0000;
+  background: rgba(204, 0, 0, 0.08);
+}
+
