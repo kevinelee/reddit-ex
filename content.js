@@ -1217,14 +1217,19 @@
   function injectExpandoButtons(root) {
     (root || document).querySelectorAll('.thing[data-permalink]').forEach(thing => {
       const topMatter = thing.querySelector('.top-matter');
-      if (!topMatter || topMatter.querySelector('.rr-hide-btn')) return;
+      if (!topMatter || topMatter.querySelector('.rr-tm-actions')) return;
 
-      // H hide button — every post, inline with expando on the left
+      // Wrapper sits on the right of .top-matter, holds all injected buttons
+      const actions = document.createElement('div');
+      actions.className = 'rr-tm-actions';
+      topMatter.appendChild(actions);
+
+      // H hide button — every post
       const hideBtn = document.createElement('div');
       hideBtn.className = 'rr-hide-btn';
       hideBtn.title = 'Hide post (H)';
       hideBtn.textContent = 'H';
-      topMatter.appendChild(hideBtn);
+      actions.appendChild(hideBtn);
       hideBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
@@ -1238,7 +1243,7 @@
       const btn = document.createElement('div');
       btn.className = 'expando-button collapsed hide-when-pinned video rr-extra-expando';
       btn.title = 'Expand media';
-      topMatter.appendChild(btn);
+      actions.appendChild(btn);
 
       let rrExpanded = false;
       btn.addEventListener('click', e => {

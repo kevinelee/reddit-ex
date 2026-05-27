@@ -655,21 +655,24 @@ body.rr-pushed {
   position: relative;
 }
 
-/* Position the injected expando button at the far right, vertically centred */
-.rr-extra-expando {
-  position: absolute !important;
+/* Wrapper: anchored to the right of .top-matter, flex row for both buttons */
+.rr-tm-actions {
+  position: absolute;
   right: 4px;
   top: 50%;
   transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Expando proxy sits naturally inside the flex wrapper */
+.rr-extra-expando {
   cursor: pointer;
 }
 
-/* H hide button — left of .top-matter, inline with expando, revealed on hover */
+/* H hide button — revealed on post hover */
 .rr-hide-btn {
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
   cursor: pointer;
   font-size: 10px;
   font-family: inherit;
@@ -686,7 +689,7 @@ body.rr-pushed {
   transition: opacity 0.12s, color 0.12s, background 0.12s, border-color 0.12s;
 }
 
-.thing[data-permalink]:hover .rr-hide-btn {
+.thing[data-permalink]:hover .rr-tm-actions .rr-hide-btn {
   opacity: 1;
 }
 
