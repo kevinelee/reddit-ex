@@ -1216,23 +1216,24 @@
 
   function injectExpandoButtons(root) {
     (root || document).querySelectorAll('.thing[data-permalink]').forEach(thing => {
-      // Only inject on posts that actually have expandable media
-      const nativeExpando = thing.querySelector('.expando-button:not(.rr-extra-expando)');
-      if (!nativeExpando) return;
-
       const topMatter = thing.querySelector('.top-matter');
-      if (!topMatter || topMatter.querySelector('.rr-extra-expando')) return;
+      if (!topMatter || topMatter.querySelector('.rr-hide-btn')) return;
 
+      // H hide button — every post
       const hideBtn = document.createElement('div');
       hideBtn.className = 'rr-hide-btn';
-      hideBtn.title = 'Hide post';
-      hideBtn.textContent = '✕';
+      hideBtn.title = 'Hide post (H)';
+      hideBtn.textContent = 'H';
       topMatter.appendChild(hideBtn);
       hideBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
         hideThingEl(thing);
       });
+
+      // Expando proxy — only for posts with native media
+      const nativeExpando = thing.querySelector('.expando-button:not(.rr-extra-expando)');
+      if (!nativeExpando) return;
 
       const btn = document.createElement('div');
       btn.className = 'expando-button collapsed hide-when-pinned video rr-extra-expando';
