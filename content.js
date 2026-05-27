@@ -1217,14 +1217,14 @@
   function injectExpandoButtons(root) {
     (root || document).querySelectorAll('.thing[data-permalink]').forEach(thing => {
       const topMatter = thing.querySelector('.top-matter');
-      if (!topMatter || topMatter.querySelector('.rr-hide-btn')) return;
+      if (!topMatter || thing.querySelector('.rr-hide-btn')) return;
 
-      // H hide button — every post
+      // H hide button — every post, anchored to the .thing corner
       const hideBtn = document.createElement('div');
       hideBtn.className = 'rr-hide-btn';
       hideBtn.title = 'Hide post (H)';
       hideBtn.textContent = 'H';
-      topMatter.appendChild(hideBtn);
+      thing.appendChild(hideBtn);
       hideBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();

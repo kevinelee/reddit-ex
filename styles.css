@@ -302,6 +302,7 @@
 /* ── Listing — hover, read & selected states ───────────────────────────── */
 
 .thing[data-permalink] {
+  position: relative;
   border-radius: 4px;
   transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
 }
@@ -663,12 +664,11 @@ body.rr-pushed {
   cursor: pointer;
 }
 
-/* H hide button — left of .top-matter, revealed on post hover */
+/* H hide button — top-right of the post item, revealed on hover */
 .rr-hide-btn {
   position: absolute;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 6px;
+  top: 6px;
   cursor: pointer;
   font-size: 10px;
   font-family: inherit;
