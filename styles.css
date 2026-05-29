@@ -648,6 +648,53 @@ body.rr-pushed {
   padding: 4px 7px;
 }
 
+/* ── Toggle switch ──────────────────────────────────────────────────────── */
+
+.rr-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.rr-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.rr-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.rr-toggle-track::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+}
+
+.rr-toggle input:checked + .rr-toggle-track {
+  background: #0079d3;
+}
+
+.rr-toggle input:checked + .rr-toggle-track::before {
+  transform: translateX(16px);
+}
+
 /* ── Top-matter extra expando button ────────────────────────────────────── */
 
 /* Give .top-matter relative positioning so we can anchor the button */

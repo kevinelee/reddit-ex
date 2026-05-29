@@ -10,6 +10,7 @@
   const MAX_WIDTH = 1000;
   const POSITION_KEY = 'rr_position';
   const HEIGHT_KEY = 'rr_height';
+  const REDIRECT_KEY = 'rr_redirect';
   const DEFAULT_HEIGHT = 380;
   const MIN_HEIGHT = 160;
   const MAX_HEIGHT = 700;
@@ -39,6 +40,7 @@
     '.rr-hide-btn',
   ].join(', ');
 
+  let redirectEnabled = true;
   let panel = null;
   let tab = null;
   let tabPopup = null;
@@ -132,6 +134,15 @@
     });
   }
 
+  function loadRedirect() {
+    return new Promise(resolve => {
+      chrome.storage.local.get(REDIRECT_KEY, data => {
+        redirectEnabled = data[REDIRECT_KEY] !== false; // default: true
+        resolve();
+      });
+    });
+  }
+
   function applyHeight() {
     if (!panel) return;
     panelHeight = Math.max(MIN_HEIGHT, Math.min(panelHeight, window.innerHeight - 80));
@@ -211,6 +222,13 @@
               <button class="rr-seg-btn${panelPosition === 'bottom' ? ' rr-seg-active' : ''}" data-pos="bottom">▼ Bottom</button>
             </div>
           </div>
+          <div class="rr-setting-row">
+            <span class="rr-setting-label">Redirect to Old Reddit</span>
+            <label class="rr-toggle">
+              <input type="checkbox" id="rr-redirect-toggle" ${redirectEnabled ? 'checked' : ''}>
+              <span class="rr-toggle-track"></span>
+            </label>
+          </div>
         </div>
       </div>
       <div id="rr-body">
@@ -264,6 +282,10 @@
     });
     panel.querySelectorAll('.rr-seg-btn[data-pos]').forEach(btn => {
       btn.addEventListener('click', () => applyPanelPosition(btn.dataset.pos));
+    });
+    panel.querySelector('#rr-redirect-toggle').addEventListener('change', e => {
+      redirectEnabled = e.target.checked;
+      chrome.runtime.sendMessage({ type: 'rr_setRedirect', enabled: redirectEnabled });
     });
     document.addEventListener('keydown', e => {
       // Context menu hotkeys — consumed before everything else
@@ -1353,6 +1375,7 @@
     await loadWidth();
     await loadPanelHeight();
     await loadPosition();
+    await loadRedirect();
     buildPanel();
     buildTab();
 
