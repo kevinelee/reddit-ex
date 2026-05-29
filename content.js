@@ -295,6 +295,42 @@
       } else if ((e.key === 'h' || e.key === 'H') && hoveredThingEl) {
         e.preventDefault();
         hideThingEl(hoveredThingEl);
+      } else if ((e.key === 'e' || e.key === 'E') && hoveredThingEl) {
+        e.preventDefault();
+        const expando = hoveredThingEl.querySelector('.expando-button:not(.rr-extra-expando)');
+        if (expando) expando.click();
+        const _eid = (hoveredThingEl.dataset.fullname || '').replace('t3_', '');
+        const _eurl = 'https://old.reddit.com' + hoveredThingEl.dataset.permalink;
+        const _etitle = hoveredThingEl.querySelector('a.title')?.textContent?.trim() || '';
+        const _esub = hoveredThingEl.dataset.subredditPrefixed || '';
+        upsertHistory({ id: _eid, url: _eurl, title: _etitle, sub: _esub, timestamp: Date.now(), read: true });
+        updateListingReadState(_eid);
+        updateReadCount();
+      } else if ((e.key === 'g' || e.key === 'G') && hoveredThingEl) {
+        e.preventDefault();
+        const _id = (hoveredThingEl.dataset.fullname || '').replace('t3_', '');
+        const _url = 'https://old.reddit.com' + hoveredThingEl.dataset.permalink;
+        const _title = hoveredThingEl.querySelector('a.title')?.textContent?.trim() || '';
+        const _sub = hoveredThingEl.dataset.subredditPrefixed || '';
+        upsertHistory({ id: _id, url: _url, title: _title, sub: _sub, timestamp: Date.now(), read: true });
+        updateListingReadState(_id);
+        updateReadCount();
+      } else if (e.key === '1' && hoveredThingEl) {
+        e.preventDefault();
+        const expando = hoveredThingEl.querySelector('.expando-button:not(.rr-extra-expando)');
+        if (expando) expando.click();
+      } else if (e.key === '2' && hoveredThingEl) {
+        e.preventDefault();
+        const _2id = (hoveredThingEl.dataset.fullname || '').replace('t3_', '');
+        const _2url = 'https://old.reddit.com' + hoveredThingEl.dataset.permalink;
+        const _2title = hoveredThingEl.querySelector('a.title')?.textContent?.trim() || '';
+        const _2sub = hoveredThingEl.dataset.subredditPrefixed || '';
+        upsertHistory({ id: _2id, url: _2url, title: _2title, sub: _2sub, timestamp: Date.now(), read: true });
+        updateListingReadState(_2id);
+        updateReadCount();
+      } else if (e.key === '4' && hoveredThingEl) {
+        e.preventDefault();
+        hideThingEl(hoveredThingEl);
       }
     });
     panel.querySelector('#rr-back').addEventListener('click', showHistoryView);
