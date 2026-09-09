@@ -45,8 +45,19 @@
   }
 
   window.addEventListener('message', e => {
-    if (e.data && e.data.type === 'rr-video-key') {
+    if (!e.data) return;
+    if (e.data.type === 'rr-video-key') {
       controlVideo(e.data.key, e.data.shiftKey);
+    } else if (e.data.type === 'rr-video-pause') {
+      getVideo()?.pause();
     }
   });
+
+  // Tell the top-level page a video here started playing, so it can pause
+  // any other video (listing or panel) to keep playback to one at a time.
+  document.addEventListener('play', e => {
+    if (e.target.tagName === 'VIDEO') {
+      window.top?.postMessage({ type: 'rr-video-playing' }, '*');
+    }
+  }, true);
 })();

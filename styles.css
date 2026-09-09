@@ -326,6 +326,96 @@
   outline-offset: -2px;
 }
 
+/* ── Read / unread divider ──────────────────────────────────────────────── */
+
+#rr-read-divider {
+  margin: 18px 8px 22px;
+  border: none;
+  border-top: 2px solid #0079d3;
+  opacity: 0.6;
+  position: relative;
+}
+
+#rr-read-divider::after {
+  content: 'Read';
+  position: absolute;
+  top: -9px;
+  left: 14px;
+  background: #fff;
+  padding: 0 8px;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0079d3;
+}
+
+/* ── Flair blocklist ────────────────────────────────────────────────────── */
+
+.rr-flair-hidden {
+  display: none !important;
+}
+
+.rr-flair-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#rr-flair-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rr-flair-empty {
+  font-size: 11px;
+  color: #999;
+  font-family: inherit;
+  line-height: 1.5;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.rr-flair-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.rr-flair-item-label {
+  font-size: 12px;
+  color: #1c1c1c;
+}
+
+.rr-flair-item-sub {
+  color: #999;
+}
+
+.rr-flair-remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.rr-flair-remove:hover {
+  background: #fde8e8;
+  color: #cc0000;
+}
+
 /* ── Page push ──────────────────────────────────────────────────────────── */
 
 body.rr-pushed {
@@ -646,6 +736,66 @@ body.rr-pushed {
 #rr-settings-toggle {
   font-size: 13px;
   padding: 4px 7px;
+}
+
+/* ── Keybindings legend ─────────────────────────────────────────────────── */
+
+.rr-kb-legend {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #d8dade;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.rr-kb-group {
+  margin-bottom: 10px;
+}
+
+.rr-kb-group:last-child {
+  margin-bottom: 0;
+}
+
+.rr-kb-group-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.rr-kb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+}
+
+.rr-kb-desc {
+  font-size: 12px;
+  color: #555;
+}
+
+.rr-kb-keys {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.rr-kb-key {
+  font-size: 11px;
+  font-family: inherit;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 1px 6px;
+  color: #666;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.7;
 }
 
 /* ── Toggle switch ──────────────────────────────────────────────────────── */

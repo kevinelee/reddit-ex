@@ -11,6 +11,8 @@
   const POSITION_KEY = 'rr_position';
   const HEIGHT_KEY = 'rr_height';
   const REDIRECT_KEY = 'rr_redirect';
+  const SCORE_SORT_KEY = 'rr_scoreSort';
+  const FLAIR_BLOCKLIST_KEY = 'rr_flairBlocklist';
   const DEFAULT_HEIGHT = 380;
   const MIN_HEIGHT = 160;
   const MAX_HEIGHT = 700;
@@ -21,6 +23,10 @@
     ',', '.',
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
   ]);
+  // Arrow keys double as post-list navigation, so inside the panel they should
+  // only go to video seek/volume when a video is actually being hovered —
+  // never auto-activated — otherwise they navigate the listing instead.
+  const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 
   // Elements within a .thing that should not trigger the panel
   const PASSTHROUGH_SEL = [
@@ -41,6 +47,8 @@
   ].join(', ');
 
   let redirectEnabled = true;
+  let scoreSortEnabled = false;
+  let naturalOrderCounter = 0;
   let panel = null;
   let tab = null;
   let tabPopup = null;
@@ -55,10 +63,13 @@
   let loadGen = 0;
   let activeVideoEl = null;
   let activeVideoIframe = null;
+  let videoIsHovered = false; // true only while the mouse is actually over a video/its iframe
   let lastFetchTime = 0;
   const FETCH_MIN_GAP = 800;
   let contextMenuEl = null;
   let contextMenuThingEl = null;
+  let contextMenuFlairInfo = null;
+  let flairBlocklist = []; // [{ sub: 'leagueoflegends', flair: 'esports', subLabel: 'r/leagueoflegends', flairLabel: 'Esports' }]
 
   // ── Storage ───────────────────────────────────────────────────────────────
 
@@ -141,6 +152,28 @@
         resolve();
       });
     });
+  }
+
+  function loadScoreSort() {
+    return new Promise(resolve => {
+      chrome.storage.local.get(SCORE_SORT_KEY, data => {
+        scoreSortEnabled = data[SCORE_SORT_KEY] === true; // default: off
+        resolve();
+      });
+    });
+  }
+
+  function loadFlairBlocklist() {
+    return new Promise(resolve => {
+      chrome.storage.local.get(FLAIR_BLOCKLIST_KEY, data => {
+        flairBlocklist = data[FLAIR_BLOCKLIST_KEY] || [];
+        resolve();
+      });
+    });
+  }
+
+  function saveFlairBlocklist() {
+    chrome.storage.local.set({ [FLAIR_BLOCKLIST_KEY]: flairBlocklist });
   }
 
   function applyHeight() {
@@ -229,6 +262,51 @@
               <span class="rr-toggle-track"></span>
             </label>
           </div>
+          <div class="rr-setting-row">
+            <span class="rr-setting-label">Sort Unread by Upvotes</span>
+            <label class="rr-toggle">
+              <input type="checkbox" id="rr-score-sort-toggle" ${scoreSortEnabled ? 'checked' : ''}>
+              <span class="rr-toggle-track"></span>
+            </label>
+          </div>
+          <div class="rr-flair-section">
+            <span class="rr-setting-label">Blocked Flairs</span>
+            <div id="rr-flair-list"></div>
+          </div>
+          <div class="rr-kb-legend">
+            <div class="rr-kb-group">
+              <div class="rr-kb-group-title">Navigation</div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Move selection</span><span class="rr-kb-keys"><kbd class="rr-kb-key">↑</kbd><kbd class="rr-kb-key">↓</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Open selected post</span><span class="rr-kb-keys"><kbd class="rr-kb-key">→</kbd><kbd class="rr-kb-key">Enter</kbd><kbd class="rr-kb-key">Space</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Back to history</span><span class="rr-kb-keys"><kbd class="rr-kb-key">←</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Close panel / menu</span><span class="rr-kb-keys"><kbd class="rr-kb-key">Esc</kbd></span></div>
+            </div>
+            <div class="rr-kb-group">
+              <div class="rr-kb-group-title">Hover a post</div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Expand media + mark read</span><span class="rr-kb-keys"><kbd class="rr-kb-key">E</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Expand media only</span><span class="rr-kb-keys"><kbd class="rr-kb-key">1</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Mark as read</span><span class="rr-kb-keys"><kbd class="rr-kb-key">G</kbd><kbd class="rr-kb-key">2</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Hide post</span><span class="rr-kb-keys"><kbd class="rr-kb-key">H</kbd><kbd class="rr-kb-key">4</kbd></span></div>
+            </div>
+            <div class="rr-kb-group">
+              <div class="rr-kb-group-title">Right-click menu</div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Open in new tab</span><span class="rr-kb-keys"><kbd class="rr-kb-key">T</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Open in side panel</span><span class="rr-kb-keys"><kbd class="rr-kb-key">P</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Mark as read</span><span class="rr-kb-keys"><kbd class="rr-kb-key">R</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Hide</span><span class="rr-kb-keys"><kbd class="rr-kb-key">H</kbd></span></div>
+            </div>
+            <div class="rr-kb-group">
+              <div class="rr-kb-group-title">Video (hover)</div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Play / pause</span><span class="rr-kb-keys"><kbd class="rr-kb-key">Space</kbd><kbd class="rr-kb-key">K</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Fullscreen</span><span class="rr-kb-keys"><kbd class="rr-kb-key">F</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Mute</span><span class="rr-kb-keys"><kbd class="rr-kb-key">M</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Seek ±5s (Shift=10s)</span><span class="rr-kb-keys"><kbd class="rr-kb-key">←</kbd><kbd class="rr-kb-key">→</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Volume</span><span class="rr-kb-keys"><kbd class="rr-kb-key">↑</kbd><kbd class="rr-kb-key">↓</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Skip 10s</span><span class="rr-kb-keys"><kbd class="rr-kb-key">J</kbd><kbd class="rr-kb-key">L</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Frame step</span><span class="rr-kb-keys"><kbd class="rr-kb-key">,</kbd><kbd class="rr-kb-key">.</kbd></span></div>
+              <div class="rr-kb-row"><span class="rr-kb-desc">Jump to %</span><span class="rr-kb-keys"><kbd class="rr-kb-key">0</kbd>–<kbd class="rr-kb-key">9</kbd></span></div>
+            </div>
+          </div>
         </div>
       </div>
       <div id="rr-body">
@@ -240,6 +318,7 @@
     `;
     document.body.appendChild(panel);
     applyWidth();
+    renderFlairBlocklist();
 
     const resizeHandle = panel.querySelector('#rr-resize');
     const dragOverlay = panel.querySelector('#rr-drag-overlay');
@@ -287,6 +366,11 @@
       redirectEnabled = e.target.checked;
       chrome.runtime.sendMessage({ type: 'rr_setRedirect', enabled: redirectEnabled });
     });
+    panel.querySelector('#rr-score-sort-toggle').addEventListener('change', e => {
+      scoreSortEnabled = e.target.checked;
+      chrome.storage.local.set({ [SCORE_SORT_KEY]: scoreSortEnabled });
+      reorderListing();
+    });
     document.addEventListener('keydown', e => {
       // Context menu hotkeys — consumed before everything else
       if (contextMenuEl?.classList.contains('rr-ctx-visible')) {
@@ -300,60 +384,7 @@
         return; // swallow all other keys while menu is open
       }
 
-      if (e.key === 'Escape' && panel.classList.contains('rr-open')) { closePanel(); return; }
-      if (e.target.closest('input, textarea, select, [contenteditable]')) return;
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        navigateThings(e.key === 'ArrowDown' ? 1 : -1);
-      } else if (e.key === 'ArrowRight' && selectedThingEl) {
-        e.preventDefault();
-        openSelectedThing();
-      } else if (e.key === 'ArrowLeft' && currentPostId) {
-        e.preventDefault();
-        showHistoryView();
-      } else if ((e.key === 'Enter' || e.key === ' ') && selectedThingEl) {
-        e.preventDefault();
-        openSelectedThing();
-      } else if ((e.key === 'h' || e.key === 'H') && hoveredThingEl) {
-        e.preventDefault();
-        hideThingEl(hoveredThingEl);
-      } else if ((e.key === 'e' || e.key === 'E') && hoveredThingEl) {
-        e.preventDefault();
-        const expando = hoveredThingEl.querySelector('.expando-button:not(.rr-extra-expando)');
-        if (expando) expando.click();
-        const _eid = (hoveredThingEl.dataset.fullname || '').replace('t3_', '');
-        const _eurl = 'https://old.reddit.com' + hoveredThingEl.dataset.permalink;
-        const _etitle = hoveredThingEl.querySelector('a.title')?.textContent?.trim() || '';
-        const _esub = hoveredThingEl.dataset.subredditPrefixed || '';
-        upsertHistory({ id: _eid, url: _eurl, title: _etitle, sub: _esub, timestamp: Date.now(), read: true });
-        updateListingReadState(_eid);
-        updateReadCount();
-      } else if ((e.key === 'g' || e.key === 'G') && hoveredThingEl) {
-        e.preventDefault();
-        const _id = (hoveredThingEl.dataset.fullname || '').replace('t3_', '');
-        const _url = 'https://old.reddit.com' + hoveredThingEl.dataset.permalink;
-        const _title = hoveredThingEl.querySelector('a.title')?.textContent?.trim() || '';
-        const _sub = hoveredThingEl.dataset.subredditPrefixed || '';
-        upsertHistory({ id: _id, url: _url, title: _title, sub: _sub, timestamp: Date.now(), read: true });
-        updateListingReadState(_id);
-        updateReadCount();
-      } else if (e.key === '1' && hoveredThingEl) {
-        e.preventDefault();
-        const expando = hoveredThingEl.querySelector('.expando-button:not(.rr-extra-expando)');
-        if (expando) expando.click();
-      } else if (e.key === '2' && hoveredThingEl) {
-        e.preventDefault();
-        const _2id = (hoveredThingEl.dataset.fullname || '').replace('t3_', '');
-        const _2url = 'https://old.reddit.com' + hoveredThingEl.dataset.permalink;
-        const _2title = hoveredThingEl.querySelector('a.title')?.textContent?.trim() || '';
-        const _2sub = hoveredThingEl.dataset.subredditPrefixed || '';
-        upsertHistory({ id: _2id, url: _2url, title: _2title, sub: _2sub, timestamp: Date.now(), read: true });
-        updateListingReadState(_2id);
-        updateReadCount();
-      } else if (e.key === '4' && hoveredThingEl) {
-        e.preventDefault();
-        hideThingEl(hoveredThingEl);
-      }
+      handleNavKeydown(e);
     });
     panel.querySelector('#rr-back').addEventListener('click', showHistoryView);
     panel.querySelector('#rr-newtab').addEventListener('click', () => {
@@ -687,6 +718,9 @@
             return;
           }
           if (e.target.closest('a, button, input')) return;
+          // Don't collapse if the click is releasing a text selection (copying)
+          var sel = window.getSelection();
+          if (sel && sel.toString().length > 0) return;
           var entry = e.target.closest('.entry');
           if (!entry) return;
           var comment = entry.closest('.comment');
@@ -795,7 +829,11 @@
         return;
       }
 
-      showContextMenu(thing, e.clientX, e.clientY);
+      const flairEl = e.target.closest('.linkflairlabel');
+      const flairInfo = flairEl
+        ? { sub: thing.dataset.subredditPrefixed || '', flair: (flairEl.getAttribute('title') || flairEl.textContent || '').trim() }
+        : null;
+      showContextMenu(thing, e.clientX, e.clientY, flairInfo);
     }, true);
 
     // Dismiss context menu on outside click or scroll
@@ -893,6 +931,134 @@
     loadPost(url, id);
   }
 
+  // Shared nav/hotkey handling — bound to the main document AND to the panel
+  // iframe's document, so keyboard shortcuts keep working while focus is in
+  // the right-hand panel instead of requiring a click back onto the listing.
+  function handleNavKeydown(e) {
+    if (e.key === 'Escape' && panel.classList.contains('rr-open')) { closePanel(); return; }
+    if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      navigateThings(e.key === 'ArrowDown' ? 1 : -1);
+    } else if (e.key === 'ArrowRight' && selectedThingEl) {
+      e.preventDefault();
+      openSelectedThing();
+    } else if (e.key === 'ArrowLeft' && currentPostId) {
+      e.preventDefault();
+      showHistoryView();
+    } else if ((e.key === 'Enter' || e.key === ' ') && selectedThingEl) {
+      e.preventDefault();
+      openSelectedThing();
+    } else if ((e.key === 'h' || e.key === 'H') && hoveredThingEl) {
+      e.preventDefault();
+      hideThingEl(hoveredThingEl);
+    } else if ((e.key === 'e' || e.key === 'E') && hoveredThingEl) {
+      e.preventDefault();
+      const expando = hoveredThingEl.querySelector('.expando-button:not(.rr-extra-expando)');
+      if (expando) expando.click();
+      const _eid = (hoveredThingEl.dataset.fullname || '').replace('t3_', '');
+      const _eurl = 'https://old.reddit.com' + hoveredThingEl.dataset.permalink;
+      const _etitle = hoveredThingEl.querySelector('a.title')?.textContent?.trim() || '';
+      const _esub = hoveredThingEl.dataset.subredditPrefixed || '';
+      upsertHistory({ id: _eid, url: _eurl, title: _etitle, sub: _esub, timestamp: Date.now(), read: true });
+      updateListingReadState(_eid);
+      updateReadCount();
+    } else if ((e.key === 'g' || e.key === 'G') && hoveredThingEl) {
+      e.preventDefault();
+      const _id = (hoveredThingEl.dataset.fullname || '').replace('t3_', '');
+      const _url = 'https://old.reddit.com' + hoveredThingEl.dataset.permalink;
+      const _title = hoveredThingEl.querySelector('a.title')?.textContent?.trim() || '';
+      const _sub = hoveredThingEl.dataset.subredditPrefixed || '';
+      upsertHistory({ id: _id, url: _url, title: _title, sub: _sub, timestamp: Date.now(), read: true });
+      updateListingReadState(_id);
+      updateReadCount();
+    } else if (e.key === '1' && hoveredThingEl) {
+      e.preventDefault();
+      const expando = hoveredThingEl.querySelector('.expando-button:not(.rr-extra-expando)');
+      if (expando) expando.click();
+    } else if (e.key === '2' && hoveredThingEl) {
+      e.preventDefault();
+      const _2id = (hoveredThingEl.dataset.fullname || '').replace('t3_', '');
+      const _2url = 'https://old.reddit.com' + hoveredThingEl.dataset.permalink;
+      const _2title = hoveredThingEl.querySelector('a.title')?.textContent?.trim() || '';
+      const _2sub = hoveredThingEl.dataset.subredditPrefixed || '';
+      upsertHistory({ id: _2id, url: _2url, title: _2title, sub: _2sub, timestamp: Date.now(), read: true });
+      updateListingReadState(_2id);
+      updateReadCount();
+    } else if (e.key === '4' && hoveredThingEl) {
+      e.preventDefault();
+      hideThingEl(hoveredThingEl);
+    }
+  }
+
+  // ── Flair blocklist ───────────────────────────────────────────────────────
+
+  function normalizeSub(sub) {
+    return (sub || '').replace(/^\/?r\//i, '').trim().toLowerCase();
+  }
+
+  function normalizeFlair(flair) {
+    return (flair || '').trim().toLowerCase();
+  }
+
+  function getThingFlair(thing) {
+    const flairEl = thing.querySelector('.linkflairlabel');
+    if (!flairEl) return '';
+    return (flairEl.getAttribute('title') || flairEl.textContent || '').trim();
+  }
+
+  function isFlairBlocked(thing) {
+    if (flairBlocklist.length === 0) return false;
+    const sub = normalizeSub(thing.dataset.subredditPrefixed);
+    const flair = normalizeFlair(getThingFlair(thing));
+    if (!sub || !flair) return false;
+    return flairBlocklist.some(b => b.sub === sub && b.flair === flair);
+  }
+
+  function applyFlairFilter(root) {
+    if (flairBlocklist.length === 0) return;
+    (root || document).querySelectorAll('.thing[data-permalink]').forEach(thing => {
+      if (isFlairBlocked(thing)) thing.classList.add('rr-flair-hidden');
+    });
+  }
+
+  function addFlairBlock(subLabel, flairLabel) {
+    const sub = normalizeSub(subLabel);
+    const flair = normalizeFlair(flairLabel);
+    if (!sub || !flair) return;
+    if (flairBlocklist.some(b => b.sub === sub && b.flair === flair)) return;
+    flairBlocklist.push({ sub, flair, subLabel: subLabel || sub, flairLabel: flairLabel.trim() });
+    saveFlairBlocklist();
+    applyFlairFilter();
+    renderFlairBlocklist();
+  }
+
+  function removeFlairBlock(sub, flair) {
+    flairBlocklist = flairBlocklist.filter(b => !(b.sub === sub && b.flair === flair));
+    saveFlairBlocklist();
+    renderFlairBlocklist();
+  }
+
+  function renderFlairBlocklist() {
+    const list = panel?.querySelector('#rr-flair-list');
+    if (!list) return;
+    if (flairBlocklist.length === 0) {
+      list.innerHTML = '<p class="rr-flair-empty">No flairs blocked yet.<br>Right-click a flair on a post to hide it.</p>';
+      return;
+    }
+    list.innerHTML = flairBlocklist.map(b => `
+      <div class="rr-flair-item" data-sub="${esc(b.sub)}" data-flair="${esc(b.flair)}">
+        <span class="rr-flair-item-label">${esc(b.flairLabel)} <span class="rr-flair-item-sub">in r/${esc(b.sub)}</span></span>
+        <button class="rr-flair-remove" title="Unblock">✕</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('.rr-flair-item').forEach(el => {
+      el.querySelector('.rr-flair-remove').addEventListener('click', () => {
+        removeFlairBlock(el.dataset.sub, el.dataset.flair);
+      });
+    });
+  }
+
   // ── Listing read state ────────────────────────────────────────────────────
 
   function updateListingReadState(id) {
@@ -905,27 +1071,63 @@
     history.filter(p => p.read).forEach(p => updateListingReadState(p.id));
   }
 
-  function hoistUnreadsInListing() {
+  // Reads the visible score off a listing row. Posts with a hidden score show a
+  // "•" instead of a number — those count as 0 so they sink to the bottom.
+  function parseThingScore(thing) {
+    const el = thing.querySelector('.score.unvoted') || thing.querySelector('.score');
+    const raw = (el?.textContent || '').replace(/,/g, '').trim();
+    const m = raw.match(/^(-?\d+(?:\.\d+)?)\s*([km])?/i);
+    if (!m) return 0;
+    const n = parseFloat(m[1]);
+    if (!isFinite(n)) return 0;
+    const suffix = (m[2] || '').toLowerCase();
+    return Math.round(n * (suffix === 'k' ? 1e3 : suffix === 'm' ? 1e6 : 1));
+  }
+
+  function reorderListing() {
     const siteTable = document.querySelector('#siteTable');
     if (!siteTable) return;
+
+    // Remove any stale divider before recomputing order/positions
+    siteTable.querySelector(':scope > #rr-read-divider')?.remove();
 
     const things = [...siteTable.querySelectorAll(':scope > .thing[data-permalink]')];
     if (things.length === 0) return;
 
+    // Stamp the listing's natural order once so sorting can be undone
+    things.forEach(t => {
+      if (t.dataset.rrOrder === undefined) t.dataset.rrOrder = String(naturalOrderCounter++);
+    });
+
     const readIds = new Set(history.filter(p => p.read).map(p => p.id));
-    const unread = things.filter(t => !readIds.has((t.dataset.fullname || '').replace('t3_', '')));
-    const read = things.filter(t => readIds.has((t.dataset.fullname || '').replace('t3_', '')));
+    const isRead = t => readIds.has((t.dataset.fullname || '').replace('t3_', ''));
+    const natural = (a, b) => Number(a.dataset.rrOrder) - Number(b.dataset.rrOrder);
 
-    if (unread.length === 0 || read.length === 0) return;
+    const unread = things.filter(t => !isRead(t)).sort(
+      scoreSortEnabled
+        ? (a, b) => parseThingScore(b) - parseThingScore(a) || natural(a, b)
+        : natural
+    );
+    const read = things.filter(isRead).sort(natural);
 
-    const placeholder = document.createTextNode('');
-    siteTable.insertBefore(placeholder, things[0]);
-    things.forEach(t => t.remove());
+    const ordered = [...unread, ...read];
+    if (!ordered.every((t, i) => t === things[i])) {
+      const placeholder = document.createTextNode('');
+      siteTable.insertBefore(placeholder, things[0]);
+      things.forEach(t => t.remove());
 
-    const fragment = document.createDocumentFragment();
-    [...unread, ...read].forEach(t => fragment.appendChild(t));
-    siteTable.insertBefore(fragment, placeholder);
-    placeholder.remove();
+      const fragment = document.createDocumentFragment();
+      ordered.forEach(t => fragment.appendChild(t));
+      siteTable.insertBefore(fragment, placeholder);
+      placeholder.remove();
+    }
+
+    // Mark the boundary between unread and read posts
+    if (unread.length > 0 && read.length > 0) {
+      const divider = document.createElement('div');
+      divider.id = 'rr-read-divider';
+      read[0].insertAdjacentElement('beforebegin', divider);
+    }
   }
 
   // ── Panel iframe video controls ───────────────────────────────────────────
@@ -947,36 +1149,53 @@
 
     iDoc.addEventListener('mouseover', e => {
       const video = e.target.closest('video');
-      if (video && video !== activeVideoEl) setActiveVideo(video, null);
+      if (video) {
+        videoIsHovered = true;
+        if (video !== activeVideoEl) setActiveVideo(video, null);
+      }
     });
 
     iDoc.addEventListener('mouseout', e => {
       if (e.target !== activeVideoEl) return;
       if (activeVideoEl.contains(e.relatedTarget)) return;
       console.log('[rr-video] mouse left video in panel iframe');
+      videoIsHovered = false;
       setActiveVideo(null, null);
     });
+
+    // Only one video plays at a time — pause the listing/other panel video
+    // whenever a video inside this panel starts playing.
+    iDoc.addEventListener('play', e => {
+      if (e.target.tagName === 'VIDEO') {
+        pauseOtherVideos(e.target, null);
+      }
+    }, true);
 
     // Handle keys when the panel iframe itself has focus
     iDoc.addEventListener('keydown', e => {
       if (e.target.closest('input, textarea, select, [contenteditable]')) return;
-      if (!VIDEO_KEYS.has(e.key)) return;
-      // Auto-activate the first video in the panel if the user hasn't hovered one yet
-      if (!activeVideoEl) {
-        const video = iDoc.querySelector('video');
-        if (video) {
-          console.log('[rr-video] auto-activating video for keydown');
-          setActiveVideo(video, null);
+      if (VIDEO_KEYS.has(e.key) && !(ARROW_KEYS.has(e.key) && !videoIsHovered)) {
+        // Auto-activate the first video in the panel if the user hasn't hovered one yet
+        // (arrows are excluded — those stay reserved for list navigation until hovered)
+        if (!activeVideoEl) {
+          const video = iDoc.querySelector('video');
+          if (video) {
+            console.log('[rr-video] auto-activating video for keydown');
+            setActiveVideo(video, null);
+          }
         }
-      }
-      console.log('[rr-video] keydown in panel iframe:', e.key, '| activeVideoEl:', activeVideoEl);
-      const handled = dispatchVideoKey(e.key, e.shiftKey);
-      if (handled) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-      } else {
+        console.log('[rr-video] keydown in panel iframe:', e.key, '| activeVideoEl:', activeVideoEl);
+        const handled = dispatchVideoKey(e.key, e.shiftKey);
+        if (handled) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          return;
+        }
         console.log('[rr-video] key not handled — no active video');
       }
+      // Fall through to the same nav/hotkey handling as the main document,
+      // so arrows/H/G/E/etc. keep working while focus is inside the panel.
+      handleNavKeydown(e);
     });
   }
 
@@ -1031,6 +1250,29 @@
     }
   }
 
+  // Enforce single-video playback: pause every other <video> (listing + panel)
+  // and tell every other v.redd.it iframe (cross-origin, can't touch its DOM
+  // directly) to pause too, whenever one video starts playing.
+  function pauseOtherVideos(sourceVideo, sourceIframe) {
+    document.querySelectorAll('video').forEach(v => {
+      if (v !== sourceVideo && !v.paused) v.pause();
+    });
+    document.querySelectorAll('iframe[src*="v.redd.it"]').forEach(f => {
+      if (f !== sourceIframe) f.contentWindow?.postMessage({ type: 'rr-video-pause' }, '*');
+    });
+
+    const panelIframe = panel?.querySelector('#rr-iframe');
+    const iDoc = panelIframe?.contentDocument;
+    if (iDoc) {
+      iDoc.querySelectorAll('video').forEach(v => {
+        if (v !== sourceVideo && !v.paused) v.pause();
+      });
+      iDoc.querySelectorAll('iframe[src*="v.redd.it"]').forEach(f => {
+        if (f !== sourceIframe) f.contentWindow?.postMessage({ type: 'rr-video-pause' }, '*');
+      });
+    }
+  }
+
   function dispatchVideoKey(key, shiftKey) {
     if (activeVideoEl && activeVideoEl.isConnected) {
       console.log('[rr-video] dispatching key to native video:', key);
@@ -1049,11 +1291,13 @@
     document.addEventListener('mouseover', e => {
       const video = e.target.closest('video');
       if (video) {
+        videoIsHovered = true;
         if (video !== activeVideoEl) setActiveVideo(video, null);
         return;
       }
       const iframe = e.target.closest('iframe[src*="v.redd.it"]');
       if (iframe) {
+        videoIsHovered = true;
         if (iframe !== activeVideoIframe) setActiveVideo(null, iframe);
       }
     });
@@ -1062,19 +1306,41 @@
       if (e.target !== activeVideoEl) return;
       if (activeVideoEl.contains(e.relatedTarget)) return;
       console.log('[rr-video] mouse left video, deactivated');
+      videoIsHovered = false;
       setActiveVideo(null, null);
     });
 
     document.addEventListener('play', e => {
-      if (e.target.tagName === 'VIDEO' && e.target !== activeVideoEl) {
-        console.log('[rr-video] play event — activating video', e.target);
-        setActiveVideo(e.target, null);
+      if (e.target.tagName === 'VIDEO') {
+        if (e.target !== activeVideoEl) {
+          console.log('[rr-video] play event — activating video', e.target);
+          setActiveVideo(e.target, null);
+        }
+        pauseOtherVideos(e.target, null);
       }
     }, true);
+
+    // A video inside a cross-origin v.redd.it iframe (listing or panel) started
+    // playing — pause everything else so only one video plays at a time.
+    window.addEventListener('message', e => {
+      if (e.data?.type !== 'rr-video-playing') return;
+      let sourceIframe = null;
+      document.querySelectorAll('iframe[src*="v.redd.it"]').forEach(f => {
+        if (f.contentWindow === e.source) sourceIframe = f;
+      });
+      if (!sourceIframe) {
+        const iDoc = panel?.querySelector('#rr-iframe')?.contentDocument;
+        iDoc?.querySelectorAll('iframe[src*="v.redd.it"]').forEach(f => {
+          if (f.contentWindow === e.source) sourceIframe = f;
+        });
+      }
+      pauseOtherVideos(null, sourceIframe);
+    });
 
     document.addEventListener('keydown', e => {
       if (e.target.closest('input, textarea, select, [contenteditable]')) return;
       if (!VIDEO_KEYS.has(e.key)) return;
+      if (ARROW_KEYS.has(e.key) && !videoIsHovered) return; // let arrows fall through to list navigation
       console.log('[rr-video] keydown:', e.key, '| activeVideoEl:', activeVideoEl, '| activeVideoIframe:', activeVideoIframe);
       const handled = dispatchVideoKey(e.key, e.shiftKey);
       if (handled) {
@@ -1189,6 +1455,9 @@
         <span class="rr-ctx-label">Hide</span>
         <kbd class="rr-ctx-key">H</kbd>
       </div>
+      <div class="rr-ctx-item rr-ctx-danger rr-ctx-hideflair rr-hidden" data-action="hideflair">
+        <span class="rr-ctx-label" id="rr-ctx-hideflair-label">Hide Flair</span>
+      </div>
     `;
     document.body.appendChild(contextMenuEl);
 
@@ -1199,9 +1468,18 @@
     });
   }
 
-  function showContextMenu(thing, x, y) {
+  function showContextMenu(thing, x, y, flairInfo) {
     buildContextMenu();
     contextMenuThingEl = thing;
+    contextMenuFlairInfo = flairInfo && flairInfo.flair ? flairInfo : null;
+
+    const flairItem = contextMenuEl.querySelector('.rr-ctx-hideflair');
+    if (contextMenuFlairInfo) {
+      contextMenuEl.querySelector('#rr-ctx-hideflair-label').textContent = `Hide Flair "${contextMenuFlairInfo.flair}"`;
+      flairItem.classList.remove('rr-hidden');
+    } else {
+      flairItem.classList.add('rr-hidden');
+    }
 
     // Initial position at cursor
     contextMenuEl.style.left = x + 'px';
@@ -1224,11 +1502,17 @@
     if (!contextMenuEl) return;
     contextMenuEl.classList.remove('rr-ctx-visible');
     contextMenuThingEl = null;
+    contextMenuFlairInfo = null;
   }
 
   function execContextAction(action) {
-    const thing = contextMenuThingEl; // capture before hiding clears it
+    const thing = contextMenuThingEl; // capture before hiding clears them
+    const flairInfo = contextMenuFlairInfo;
     hideContextMenu();
+    if (action === 'hideflair') {
+      if (flairInfo) addFlairBlock(flairInfo.sub, flairInfo.flair);
+      return;
+    }
     if (!thing) return;
 
     const id = (thing.dataset.fullname || '').replace('t3_', '');
@@ -1332,7 +1616,10 @@
   function watchForNewThings() {
     const siteTable = document.querySelector('#siteTable');
     if (!siteTable) return;
-    const observer = new MutationObserver(() => injectExpandoButtons(siteTable));
+    const observer = new MutationObserver(() => {
+      injectExpandoButtons(siteTable);
+      applyFlairFilter(siteTable);
+    });
     observer.observe(siteTable, { childList: true, subtree: false });
   }
 
@@ -1354,6 +1641,9 @@
         return;
       }
       if (e.target.closest('a, button, input')) return;
+      // Don't collapse if the click is releasing a text selection (copying)
+      const sel = window.getSelection();
+      if (sel && sel.toString().length > 0) return;
       const entry = e.target.closest('.entry');
       if (!entry) return;
       const comment = entry.closest('.comment');
@@ -1376,6 +1666,8 @@
     await loadPanelHeight();
     await loadPosition();
     await loadRedirect();
+    await loadScoreSort();
+    await loadFlairBlocklist();
     buildPanel();
     buildTab();
 
@@ -1387,9 +1679,10 @@
 
     interceptPostClicks();
     applyReadStateToListing();
-    hoistUnreadsInListing();
+    reorderListing();
     hideSidebar();
     injectExpandoButtons();
+    applyFlairFilter();
     watchForNewThings();
 
     chrome.storage.local.get(PIN_KEY, data => {
